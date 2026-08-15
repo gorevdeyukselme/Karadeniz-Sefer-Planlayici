@@ -8,21 +8,30 @@ on:
 jobs:
   build-android:
     name: Build debug APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          workdir: .
-          buildozer_version: stable
+      - name: Prepare Buildozer cache
+        run: mkdir -p "$HOME/.buildozer"
+
+      - name: Build APK with official Kivy Buildozer image
+        run: |
+          docker pull ghcr.io/kivy/buildozer:latest
+          docker run --rm \
+            --volume "$HOME/.buildozer:/home/user/.buildozer" \
+            --volume "$PWD:/home/user/hostcwd" \
+            ghcr.io/kivy/buildozer:latest android debug
+
+      - name: Show generated files
+        if: always()
+        run: find . -maxdepth 3 -type f \( -name "*.apk" -o -name "*.aab" \) -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Karadeniz-Sefer-Planlayici-APK
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
+          if-no-files-found: error
